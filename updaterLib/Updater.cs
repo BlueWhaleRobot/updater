@@ -5,9 +5,12 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
+using System.Security.Cryptography;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using updaterLib.models;
+using WinSCP;
 
 namespace updaterLib
 {
@@ -176,6 +179,8 @@ namespace updaterLib
                     }
                     try
                     {
+                        if (File.Exists(path))
+                            File.Delete(path);
                         using (var fileStream = File.OpenWrite(path))
                         {
                             var buffer = new byte[1024 * 1024];
@@ -238,33 +243,196 @@ namespace updaterLib
             try {
                 using (var repo = new Repository(gitRootDir))
                 {
+                    // read lastest tags
+
                     var tags = repo.Tags.ToList();
-                    foreach (var tag in tags)
+                    if(tags.Count == 0)
                     {
-                        logger.Info(tag.Annotation.Message);
-                        logger.Info(tag.FriendlyName);
+                        logger.Error("No tags found, you must add tags first");
+                        return false;
                     }
 
+                    var latestTag = tags[tags.Count - 1];
+
+                    Manifest manifest = new Manifest();
+                    manifest.version = latestTag.FriendlyName;
+                    manifest.updateInfo = latestTag.Annotation.Message;
+                    manifest.name = new DirectoryInfo(gitRootDir).Name;
+                    var currentBranch = repo.Branches.Where(x => x.IsCurrentRepositoryHead).ToList()[0];
+                    var origins = repo.Network.Remotes.Where(x => x.Name == "origin").ToList();
+                    if(origins.Count() == 0)
+                    {
+                        logger.Error("The repo does not have a valid origin");
+                        return false;
+                    }
+                    var origin = origins[0].PushUrl.Substring(
+                        origins[0].PushUrl.IndexOf("://") + 3).Replace(".", "/");
+                    if (origin.EndsWith("/git"))
+                        origin = origin.Substring(0, origin.Length - 4);
+                    manifest.updateURI = String.Format("https://update.bwbot.org/{0}/{1}",
+                        origin, currentBranch.FriendlyName);
+                    // calculate md5sums
+                    string[] allFiles = Directory.GetFiles(baseDir, "*.*", SearchOption.AllDirectories);
+                    List<models.FileInfo> filesInfo = allFiles.Select(
+                        x => new models.FileInfo {
+                            path = MakeRelativePath(baseDir, x).Replace("\\", "/"),
+                            md5sum = GetMD5(x),
+                        }).ToList();
+                    string[] updateIgnores = null;
+                    using (var reader = new StreamReader(File.OpenRead(Path.Combine(baseDir, "update.ignore")))){
+                        updateIgnores = reader.ReadToEnd().Split('\n');
+                    }
+                    // remove ignore files
+                    List<string> filesToIgnore = new List<string>();
+                    foreach(var ignore in updateIgnores)
+                    {
+                        filesToIgnore.AddRange(Directory.GetFiles(baseDir, ignore, SearchOption.AllDirectories));
+                    }
+                    filesToIgnore = filesToIgnore.Select(x => MakeRelativePath(baseDir, x).Replace("\\", "/")).ToList();
+                    
+                    manifest.files = filesInfo.Where(
+                        x => !filesToIgnore.Contains(x.path) && x.path != "manifest.json").ToList();
+                    manifest.files.Add(new models.FileInfo { path = "manifest.json", md5sum = manifest.version });
+                    // generate manifest file
+                    if (File.Exists(Path.Combine(baseDir, "manifest.json")))
+                    {
+                        File.Delete(Path.Combine(baseDir, "manifest.json"));
+                    }
+                    using (var manifestFile = File.OpenWrite(Path.Combine(baseDir, "manifest.json")))
+                    {
+                        var writer = new StreamWriter(manifestFile);
+                        writer.Write(JsonConvert.SerializeObject(manifest, Formatting.Indented));
+                        writer.Flush();
+                    }
+
+                    logger.Info(JsonConvert.SerializeObject(manifest, Formatting.Indented));
+                    logger.Info("Create manifest succeed");
                 }
             }
             catch(Exception e)
             {
                 logger.Error(e, "Not a valid git repo");
             }
-            
-            
-            // read lastest tags
-
-            // calculate md5sums
-
-            // generate manifest file
 
             return true;
         }
 
-        public bool release()
+        public bool deploy()
         {
+            checkUpdate();
+            if (currentInfo == null)
+            {
+                logger.Error("No manifest found");
+                return false;
+            }
+
+            if (remoteInfo != null && System.Version.Parse(currentInfo.version) < System.Version.Parse(remoteInfo.version))
+            {
+                logger.Error("Local version is behind released version");
+                return false;
+            }
+            var options =  new SessionOptions
+            {
+                Protocol = Protocol.Sftp,
+                HostName = "update.bwbot.org",
+                UserName = "bwbot",
+                GiveUpSecurityAndAcceptAnySshHostKey = true,
+                Timeout = new TimeSpan(0, 0, 5),
+                SshPrivateKeyPath= Path.Combine(baseDir, "bwbot.ppk")
+            };
+            
+            using (var session = new Session())
+            {
+                var sftpLogPath = Path.Combine(baseDir, "logs", "sftp.log");
+                //if (!File.Exists(sftpLogPath))
+                //    File.Create(sftpLogPath);
+                session.SessionLogPath = sftpLogPath;
+                try
+                {
+                    session.Open(options);
+                    logger.Info("Connect to release server succeed");
+                }catch(Exception e)
+                {
+                    logger.Error(e, "connect to update server failed");
+                    return false;
+                }
+                
+                string remoteBaseDir = "/home/bwbot/data/src/updateServer/packages/" +
+                    currentInfo.updateURI.Replace("https://update.bwbot.org/", "");
+                int uploadCount = 0;
+                foreach(var file in currentInfo.files)
+                {
+                    string remoteDir = remoteBaseDir + "/" + GetRemoteDirectory(file.path);
+                    if (!session.FileExists(remoteDir))
+                    {
+                        session.ExecuteCommand("mkdir -p " + remoteDir).Check();
+                    }
+                    try
+                    {
+                        session.PutFiles(
+                            Path.Combine(baseDir, file.path.Replace("/", "\\")),
+                            remoteBaseDir + "/" + file.path
+                        ).Check();
+                    }
+                    catch(Exception e)
+                    {
+                        logger.Error(e, "deploy failed");
+                    }
+                    
+                    uploadCount++;
+                    logger.Info("Release progress {0} ", uploadCount * 100f / currentInfo.files.Count);
+                }
+                logger.Info("Release progress Complete! ");
+            }
             return true;
+        }
+
+        /// <summary>
+        /// Creates a relative path from one file or folder to another.
+        /// </summary>
+        /// <param name="fromPath">Contains the directory that defines the start of the relative path.</param>
+        /// <param name="toPath">Contains the path that defines the endpoint of the relative path.</param>
+        /// <returns>The relative path from the start directory to the end path or <c>toPath</c> if the paths are not related.</returns>
+        /// <exception cref="ArgumentNullException"></exception>
+        /// <exception cref="UriFormatException"></exception>
+        /// <exception cref="InvalidOperationException"></exception>
+        public static String MakeRelativePath(String fromPath, String toPath)
+        {
+            if (String.IsNullOrEmpty(fromPath)) throw new ArgumentNullException("fromPath");
+            if (String.IsNullOrEmpty(toPath)) throw new ArgumentNullException("toPath");
+
+            Uri fromUri = new Uri(fromPath);
+            Uri toUri = new Uri(toPath);
+
+            if (fromUri.Scheme != toUri.Scheme) { return toPath; } // path can't be made relative.
+
+            Uri relativeUri = fromUri.MakeRelativeUri(toUri);
+            String relativePath = Uri.UnescapeDataString(relativeUri.ToString());
+
+            if (toUri.Scheme.Equals("file", StringComparison.InvariantCultureIgnoreCase))
+            {
+                relativePath = relativePath.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar);
+            }
+
+            return relativePath;
+        }
+
+        public string GetMD5(string filename)
+        {
+            using (var md5 = MD5.Create())
+            {
+                using (var stream = File.OpenRead(filename))
+                {
+                    return Convert.ToBase64String(md5.ComputeHash(stream));
+                }
+            }
+        }
+
+        public string GetRemoteDirectory(string filename)
+        {
+            var pathList = filename.Split('/').ToList();
+            pathList.RemoveAt(pathList.Count - 1);
+            return String.Join("/", pathList);
         }
 
     }

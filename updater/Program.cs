@@ -19,9 +19,10 @@ namespace updater
             var updater = new Updater(AppDomain.CurrentDomain.BaseDirectory);
 
             // make a release
-            //if (args.Length != 0 && args[0] == "release")
+            if (args.Length != 0 && args[0] == "release")
             {
                 updater.makeManifest();
+                updater.deploy();
                 return;
             }
 

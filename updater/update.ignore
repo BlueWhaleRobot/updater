@@ -1,0 +1,6 @@
+﻿log
+*.log
+*.pdb
+*.dll.config
+*.exe.config
+*.ppk
