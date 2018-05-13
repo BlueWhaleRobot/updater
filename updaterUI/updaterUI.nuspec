@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<package >
+  <metadata>
+    <id>Randoms.Updater.UpdaterUI</id>
+    <version>$version$</version>
+    <title>UpdaterUI</title>
+    <authors>Randoms</authors>
+    <owners>Randoms</owners>
+    <licenseUrl>https://opensource.org/licenses/MIT</licenseUrl>
+    <projectUrl>https://github.com/BlueWhaleRobot/updater</projectUrl>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <description>A simplete software update tool</description>
+    <releaseNotes>Change type to dll</releaseNotes>
+    <copyright>Copyright 2018</copyright>
+  </metadata>
+</package>
