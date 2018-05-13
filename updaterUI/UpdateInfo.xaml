@@ -1,0 +1,20 @@
+﻿<Window x:Class="updaterUI.UpdateInfo"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:updaterUI"
+        mc:Ignorable="d"
+        Title="更新说明" Height="392" Width="347"
+        ResizeMode="NoResize">
+    <Grid>
+        <Label Margin="10,10,237,293" FontSize="18">更新说明</Label>
+        <Label Height="26" Margin="10,45,257,292" FontSize="10" >当前版本</Label>
+        <Label Height="26" Margin="84,45,190,292" FontSize="10" x:Name="currentVersion" >1.0.0</Label>
+        <Label Width="60" Height="26" Margin="128,44,151,291" FontSize="10">最新版本</Label>
+        <Label Width="60" Height="26" Margin="188,44,91,291" FontSize="10" x:Name="latestVersion">1.0.1</Label>
+        <Label Margin="10,75,10,108" x:Name="updateInfo">更新内容说明</Label>
+        <Button Margin="149,321,101,10" Background="#ff0adf18" Foreground="White" Click="Button_Click">更新</Button>
+        <Button Margin="243,321,7,10" Click="Button_Click_1">取消</Button>
+    </Grid>
+</Window>
