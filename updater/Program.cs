@@ -17,6 +17,14 @@ namespace updater
         static void Main(string[] args)
         {
             var updater = new Updater(AppDomain.CurrentDomain.BaseDirectory);
+
+            // make a release
+            //if (args.Length != 0 && args[0] == "release")
+            {
+                updater.makeManifest();
+                return;
+            }
+
             if (updater.checkUpdate())
             {
                 logger.Info("new updates found");
@@ -26,6 +34,7 @@ namespace updater
                 logger.Info("no updates found");
                 return;
             }
+
             updater.startUpdate((progress) => {
                 if (progress == 1)
                     logger.Info("download complete, updating files ...");

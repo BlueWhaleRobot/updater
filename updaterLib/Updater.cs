@@ -1,4 +1,5 @@
-﻿using Newtonsoft.Json;
+﻿using LibGit2Sharp;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -21,7 +22,7 @@ namespace updaterLib
 
         public Updater(string baseDir)
         {
-            this.baseDir = baseDir;
+            this.baseDir = baseDir;   
         }
 
         public bool checkUpdate()
@@ -77,7 +78,7 @@ namespace updaterLib
                 logger.Error(e, "invalid remote manifest");
                 return false;
             }
-            if (Version.Parse(remoteInfo.version) > Version.Parse(currentInfo.version))
+            if (System.Version.Parse(remoteInfo.version) > System.Version.Parse(currentInfo.version))
             {
                 return true;
             }
@@ -206,6 +207,64 @@ namespace updaterLib
         public Manifest getRemoteInfo()
         {
             return remoteInfo;
+        }
+
+        public bool makeManifest()
+        {
+            // check if this is a git repo
+            int maxDepth = 5;
+            int depth = 0;
+            string currentDir = baseDir;
+            string gitRootDir = null;
+            while(depth < maxDepth)
+            {
+                var parentDir = Directory.GetParent(currentDir).FullName;
+                var children = Directory.GetDirectories(parentDir).Select(x => new DirectoryInfo(x).Name).ToList();
+                if (children.Contains(".git"))
+                {
+                    gitRootDir = parentDir;
+                    break;
+                }
+                currentDir = parentDir;
+                depth++;
+            }
+
+            if(gitRootDir == null)
+            {
+                logger.Error("Not a valid git repo");
+                return false;
+            }
+
+            try {
+                using (var repo = new Repository(gitRootDir))
+                {
+                    var tags = repo.Tags.ToList();
+                    foreach (var tag in tags)
+                    {
+                        logger.Info(tag.Annotation.Message);
+                        logger.Info(tag.FriendlyName);
+                    }
+
+                }
+            }
+            catch(Exception e)
+            {
+                logger.Error(e, "Not a valid git repo");
+            }
+            
+            
+            // read lastest tags
+
+            // calculate md5sums
+
+            // generate manifest file
+
+            return true;
+        }
+
+        public bool release()
+        {
+            return true;
         }
 
     }
