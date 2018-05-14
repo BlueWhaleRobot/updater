@@ -276,10 +276,17 @@ namespace updaterLib
                         logger.Error("The repo does not have a valid origin");
                         return false;
                     }
+
                     var origin = origins[0].PushUrl.Substring(
                         origins[0].PushUrl.IndexOf("://") + 3).Replace(".", "/");
                     if (origin.EndsWith("/git"))
                         origin = origin.Substring(0, origin.Length - 4);
+                    if (origin.IndexOf("@") != -1)
+                    {
+                        origin = origin.Substring(origin.IndexOf("@") + 1);
+                    }
+
+                        
                     manifest.updateURI = String.Format("https://update.bwbot.org/{0}/{1}",
                         origin, currentBranch.FriendlyName);
                     // calculate md5sums
