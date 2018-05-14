@@ -7,6 +7,7 @@ using System.Linq;
 using System.Net.Http;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using updaterLib.models;
@@ -157,7 +158,7 @@ namespace updaterLib
                 File.Move(Path.Combine(baseDir, "updates", file), Path.Combine(baseDir, file));
             }
             logger.Info("Move new files");
-            Directory.Delete(Path.Combine(baseDir, "updates"));
+            Directory.Delete(Path.Combine(baseDir, "updates"), true);
             return true;
         }
 
@@ -190,6 +191,7 @@ namespace updaterLib
                                     break;
                                 fileStream.Write(buffer, 0, count);
                             }
+                            fileStream.Flush();
                         }
                     }
                     catch(Exception e)
@@ -243,20 +245,29 @@ namespace updaterLib
             try {
                 using (var repo = new Repository(gitRootDir))
                 {
-                    // read lastest tags
-
-                    var tags = repo.Tags.ToList();
-                    if(tags.Count == 0)
-                    {
-                        logger.Error("No tags found, you must add tags first");
-                        return false;
-                    }
-
-                    var latestTag = tags[tags.Count - 1];
-
                     Manifest manifest = new Manifest();
-                    manifest.version = latestTag.FriendlyName;
-                    manifest.updateInfo = latestTag.Annotation.Message;
+                    manifest.version = "0.0.0";
+                    manifest.updateInfo = "";
+
+                    // read lastest commits
+                    Regex rgx = new Regex(@"jump version: (\d+.\d+.\d+)", RegexOptions.IgnoreCase);
+                    foreach (var commit in repo.Commits)
+                    {
+
+                        var matchRes = rgx.Match(commit.Message);
+                        if (matchRes.Success && matchRes.Groups.Count > 1)
+                        {
+                            if (manifest.version == "0.0.0")
+                                manifest.version = matchRes.Groups[1].Value;
+                            else
+                                break;
+                        }else if(manifest.version != "0.0.0")
+                        {
+                            // commits between latest version and previous version
+                            manifest.updateInfo += String.Format("{0}\n", commit.Message);
+                        }
+                    }
+   
                     manifest.name = new DirectoryInfo(gitRootDir).Name;
                     var currentBranch = repo.Branches.Where(x => x.IsCurrentRepositoryHead).ToList()[0];
                     var origins = repo.Network.Remotes.Where(x => x.Name == "origin").ToList();
@@ -344,8 +355,6 @@ namespace updaterLib
             using (var session = new Session())
             {
                 var sftpLogPath = Path.Combine(baseDir, "logs", "sftp.log");
-                //if (!File.Exists(sftpLogPath))
-                //    File.Create(sftpLogPath);
                 session.SessionLogPath = sftpLogPath;
                 try
                 {

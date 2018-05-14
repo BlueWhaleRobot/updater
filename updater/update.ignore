@@ -4,3 +4,6 @@
 *.dll.config
 *.exe.config
 *.ppk
+Randoms.Updater.UpdaterCLI.exe
+Randoms.Updater.UpdaterLib.dll
+Randoms.Updater.UpdaterUI.dll

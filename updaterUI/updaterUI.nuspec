@@ -10,7 +10,7 @@
     <projectUrl>https://github.com/BlueWhaleRobot/updater</projectUrl>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <description>A simplete software update tool</description>
-    <releaseNotes>Change type to dll</releaseNotes>
+    <releaseNotes>Change type to exe</releaseNotes>
     <copyright>Copyright 2018</copyright>
   </metadata>
 </package>

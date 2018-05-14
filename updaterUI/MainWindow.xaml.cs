@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -24,13 +25,11 @@ namespace updaterUI
         public MainWindow()
         {
             InitializeComponent();
-        }
-
-        public MainWindow(Updater updater)
-        {
-            InitializeComponent();
             Task.Run(() =>
             {
+                Thread.Sleep(2 * 1000);
+                var updater = new Updater(AppDomain.CurrentDomain.BaseDirectory);
+                updater.checkUpdate();
                 updater.startUpdate((progress) => {
                     Dispatcher.Invoke(() =>
                     {
@@ -43,7 +42,6 @@ namespace updaterUI
                     Close();
                 });
             });
-
         }
     }
 }

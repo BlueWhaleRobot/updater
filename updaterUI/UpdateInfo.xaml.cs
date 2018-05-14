@@ -36,7 +36,7 @@ namespace updaterUI
         {
             if (!isUpdateAvaliable)
                 return;
-            new MainWindow(updater).Show();
+            new MainWindow().Show();
             Close();
         }
 

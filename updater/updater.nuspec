@@ -10,7 +10,7 @@
     <projectUrl>https://github.com/BlueWhaleRobot/updater</projectUrl>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <description>A simplete software update tool</description>
-    <releaseNotes>First release, just for test</releaseNotes>
+    <releaseNotes>Add updater program to ignore list</releaseNotes>
     <copyright>Copyright 2018</copyright>
   </metadata>
 </package>
