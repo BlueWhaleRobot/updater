@@ -182,6 +182,7 @@ namespace updaterLib
                     {
                         if (File.Exists(path))
                             File.Delete(path);
+                        Directory.CreateDirectory(Path.GetDirectoryName(path));
                         using (var fileStream = File.OpenWrite(path))
                         {
                             var buffer = new byte[1024 * 1024];
