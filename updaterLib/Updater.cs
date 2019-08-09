@@ -146,6 +146,7 @@ namespace updaterLib
             // delete files
             foreach(var file in filesToDelete)
             {
+                logger.Info("Delete old files: " + Path.Combine(baseDir, file));
                 File.Delete(Path.Combine(baseDir, file));
             }
             logger.Info("Delete old files");
@@ -154,6 +155,10 @@ namespace updaterLib
             {
                 if (File.Exists(Path.Combine(baseDir, file)))
                     File.Delete(Path.Combine(baseDir, file));
+                var targetDir = new System.IO.FileInfo(Path.Combine(baseDir, file)).Directory;
+                if (!targetDir.Exists){
+                    targetDir.Create();
+                }
                 File.Move(Path.Combine(baseDir, "updates", file), Path.Combine(baseDir, file));
             }
             logger.Info("Move new files");
