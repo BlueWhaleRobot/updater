@@ -2,6 +2,7 @@
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
@@ -130,6 +131,11 @@ namespace updaterLib
                 }
             });
 
+            if (filesToDownload.Count == 0 && filesToDelete.Count == 0) {
+                return true;
+            }
+                
+
             try
             {
                 Task.WaitAll(downloadTasks.ToArray());
@@ -143,26 +149,28 @@ namespace updaterLib
             logger.Info("download complete");
             progressCallback(1);
             completeFlag = true;
+
             // delete files
-            foreach(var file in filesToDelete)
+            string deleteFiles = "";
+            foreach (var file in filesToDelete)
             {
                 logger.Info("Delete old files: " + Path.Combine(baseDir, file));
-                File.Delete(Path.Combine(baseDir, file));
+                //File.Delete(Path.Combine(baseDir, file));
+                deleteFiles = deleteFiles + "\"" + Path.Combine(baseDir, file) + "\" ";
             }
+            string updateFiles = "\"" + Path.Combine(baseDir, "updates", "*") + "\"";
+            string updatedir = "\"" + Path.Combine(baseDir, "updates") + "\"";
             logger.Info("Delete old files");
-            // move downloaded files
-            foreach(var file in filesToDownload)
-            {
-                if (File.Exists(Path.Combine(baseDir, file)))
-                    File.Delete(Path.Combine(baseDir, file));
-                var targetDir = new System.IO.FileInfo(Path.Combine(baseDir, file)).Directory;
-                if (!targetDir.Exists){
-                    targetDir.Create();
-                }
-                File.Move(Path.Combine(baseDir, "updates", file), Path.Combine(baseDir, file));
+            if (deleteFiles != "") {
+                logger.Info("cmd /c ping localhost -n 3 > nul & del /Q " + deleteFiles + " & move /Y " + updateFiles + " \"" + baseDir + "\" & rmdir /Q " + updatedir);
+                Process.Start("CMD.exe", "/c ping localhost -n 3 > nul & del /Q " + deleteFiles + " & move /Y " + updateFiles + " \"" + baseDir + "\" & rmdir /Q " + updatedir);
             }
-            logger.Info("Move new files");
-            Directory.Delete(Path.Combine(baseDir, "updates"), true);
+            else
+            {
+                logger.Info("cmd /c ping localhost -n 3 > nul & move /Y " + updateFiles + " \"" + baseDir + "\" & rmdir /Q " + updatedir);
+                Process.Start("CMD.exe", "/c ping localhost -n 3 > nul & move /Y " + updateFiles + " \"" + baseDir + "\" & rmdir /Q " + updatedir);
+            }
+            
             return true;
         }
 

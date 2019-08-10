@@ -36,7 +36,6 @@ namespace updaterUI
                         updateProgress.Value = 100 * progress;
                     });
                 });
-                MessageBox.Show("软件已经成功更新", "更新完成");
                 Dispatcher.Invoke(() =>
                 {
                     Close();
