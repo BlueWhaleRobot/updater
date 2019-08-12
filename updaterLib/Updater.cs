@@ -158,20 +158,53 @@ namespace updaterLib
                 //File.Delete(Path.Combine(baseDir, file));
                 deleteFiles = deleteFiles + "\"" + Path.Combine(baseDir, file) + "\" ";
             }
-            string updateFiles = "\"" + Path.Combine(baseDir, "updates", "*") + "\"";
             string updatedir = "\"" + Path.Combine(baseDir, "updates") + "\"";
             logger.Info("Delete old files");
-            if (deleteFiles != "") {
-                logger.Info("cmd /c ping localhost -n 3 > nul & del /Q " + deleteFiles + " & move /Y " + updateFiles + " \"" + baseDir + "\" & rmdir /Q " + updatedir);
-                Process.Start("CMD.exe", "/c ping localhost -n 3 > nul & del /Q " + deleteFiles + " & move /Y " + updateFiles + " \"" + baseDir + "\" & rmdir /Q " + updatedir);
+
+
+            // 添加延时指令
+            clearCMDs();
+            addCMDs("ping localhost -n 3 > nul");
+            // 删除目标文件
+            logger.Info("delete Files {0}", deleteFiles);
+            if(deleteFiles != "")
+                addCMDs("del /Q " + deleteFiles);
+            // 移动更新文件
+            if (Directory.Exists(Path.Combine(baseDir, "updates"))) {
+                string updateFiles = "\"" + Path.Combine(baseDir, "updates", "*") + "\"";
+                addCMDs("move /Y " + updateFiles + " \"" + baseDir + "\"");
             }
-            else
-            {
-                logger.Info("cmd /c ping localhost -n 3 > nul & move /Y " + updateFiles + " \"" + baseDir + "\" & rmdir /Q " + updatedir);
-                Process.Start("CMD.exe", "/c ping localhost -n 3 > nul & move /Y " + updateFiles + " \"" + baseDir + "\" & rmdir /Q " + updatedir);
+            string[] updateDirs = Directory.GetDirectories(Path.Combine(baseDir, "updates"));
+            logger.Info("updateDirs {0}", String.Join(",\n", updateDirs));
+            // 移动更新文件夹            
+            if (updateDirs.Length != 0) {
+                foreach (var dir in updateDirs) {
+                    // 删除旧文件夹
+                    addCMDs("rmdir /Q /S \"" + Path.Combine(baseDir, Path.GetFileName(dir)) + "\"");
+                    // 移动新文件夹
+                    addCMDs("move /Y \"" + dir + "\" \"" + baseDir + "\"");
+                }
             }
-            
+            // 删除更新文件夹
+            addCMDs("rmdir /Q " + updatedir);
+            runCMDs();
             return true;
+        }
+
+        private string currentCMDs = "";
+        public void addCMDs(string cmd) {
+            if (currentCMDs == "")
+                currentCMDs = "/c " + cmd;
+            else
+                currentCMDs += " & " + cmd;
+        }
+
+        public void clearCMDs() {
+            currentCMDs = "";
+        }
+        public void runCMDs() {
+            logger.Info("Run commands: " + currentCMDs);
+            Process.Start("CMD.exe", currentCMDs);
         }
 
         public Task<bool> downloadFile(string url, string path)
