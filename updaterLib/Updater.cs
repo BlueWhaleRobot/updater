@@ -164,7 +164,7 @@ namespace updaterLib
 
             // 添加延时指令
             clearCMDs();
-            addCMDs("ping localhost -n 3 > nul");
+            addCMDs("ping localhost -n 10 > nul");
             // 删除目标文件
             logger.Info("delete Files {0}", deleteFiles);
             if(deleteFiles != "")
